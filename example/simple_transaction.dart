@@ -2,8 +2,8 @@ import 'package:http/http.dart';
 import 'package:web3dart/web3dart.dart';
 
 const String privateKey =
-    'a2fd51b96dc55aeb14b30d55a6b3121c7b9c599500c1beb92a389c3377adc86e';
-const String rpcUrl = 'http://localhost:7545';
+    '98cee03ee4d0a69359da5eae0599c479fcf0d49075afedd381cce8733fb09964';
+const String rpcUrl = 'https://devnet.newchain.cloud.diynova.com/';
 
 void main() async {
   final client = Web3Client(rpcUrl, Client(), enableBackgroundIsolate: true);
@@ -18,11 +18,11 @@ void main() async {
     credentials,
     Transaction(
       to: EthereumAddress.fromHex('0xC914Bb2ba888e3367bcecEb5C2d99DF7C7423706'),
-      gasPrice: EtherAmount.inWei(BigInt.one),
-      maxGas: 100000,
+      gasPrice: EtherAmount.inWei(BigInt.from(21000000)),
+      maxGas: 10000000,
       value: EtherAmount.fromUnitAndValue(EtherUnit.ether, 1),
     ),
-    fetchChainIdFromNetworkId: false,
+    fetchChainIdFromNetworkId: true,
   );
 
   await client.dispose();
