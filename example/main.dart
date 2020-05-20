@@ -5,8 +5,9 @@ const String privateKey =
     '98cee03ee4d0a69359da5eae0599c479fcf0d49075afedd381cce8733fb09964';
 const String rpcUrl = 'https://devnet.newchain.cloud.diynova.com/';
 
-void main() async {
-  final client = Web3Client(rpcUrl, Client(), enableBackgroundIsolate: true);
+Future<void> main() async {
+  // start a client we can use to send transactions
+  final client = Web3Client(rpcUrl, Client());
 
   final credentials = await client.credentialsFromPrivateKey(privateKey);
   final address = await credentials.extractAddress();
@@ -22,7 +23,10 @@ void main() async {
       maxGas: 10000000,
       value: EtherAmount.fromUnitAndValue(EtherUnit.ether, 1),
     ),
+<<<<<<< HEAD:example/simple_transaction.dart
     fetchChainIdFromNetworkId: true,
+=======
+>>>>>>> etherum/master:example/main.dart
   );
 
   await client.dispose();

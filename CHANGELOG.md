@@ -1,10 +1,29 @@
 # Changelog
 
+## 2.0.0-dev.7
+
+- __Breaking__: Renamed `TransactionReceipt.fromJson` to `TransactionReceipt.fromMap`
+- __Breaking__: Removed the `backgroundIsolate` option from `Web3Client`. 
+  For background isolates, instead use `runner: await IsolateRunner.spawn()` from `package:isolate`.
+- __Breaking__: Changed `TransactionInformation.r` and `TransactionInformation.s` from `Uint8List` to
+  `BigInt`
+- Add `ecRecover` and `isValidSignature` to verify messages. Thanks, [brickpop](https://github.com/brickpop)!
+- Add `compressPublicKey` and `decompressPublicKey` to obtain a compressed or expanded version of keys.
+- Add `getLogs` method to `Web3Client`. Thanks, [jmank88](https://github.com/jmank88)!
+- Fix `hexToDartInt` not actually parsing hex ([#81](https://github.com/simolus3/web3dart/issues/81))
+
+## 1.2.3
+
+- include a `0x` for hex data in `eth_estimateGas` - thanks, [@Botary](https://github.com/Botary)
+
+## 1.2.2
+- Fixed a bug when decoding negative integers ([#73](https://github.com/simolus3/web3dart/issues/73))
+
 ## 1.2.0
 - Added `estimateGas` method on `Web3Client` to estimate the amount of gas that
   would be used by a transaction.
   
-In 1.2.1, the `atBlock` parameter on `estimateGas` was deprecated an will be ignored.
+In 1.2.1, the `atBlock` parameter on `estimateGas` was deprecated and will be ignored.
 
 ## 1.1.1, 1.1.1+1
 - Fix parsing transaction receipts when the block number is not yet available.

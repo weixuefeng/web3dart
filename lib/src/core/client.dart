@@ -42,14 +42,16 @@ class Web3Client {
 
   /// Starts a client that connects to a JSON rpc API, available at [url]. The
   /// [httpClient] will be used to send requests to the rpc server.
-  /// If [enableBackgroundIsolate] is true (defaults to false), expensive
-  /// methods like [credentialsFromPrivateKey] or [sendTransaction] will use
-  /// a background isolate instead of blocking the main thread. This feature
-  /// is experimental at the moment.
+  /// The [runner] will be used to perform expensive operations, such as signing
+  /// transactions or computing private keys. By default, a [Runner] on the same
+  /// isolate will be used. You can use `IsolateRunner.spawn` to use a
+  /// background runner instead.
+  /// The runner will automatically be disposed by web3dart when [dispose] is
+  /// called.
   Web3Client(String url, Client httpClient,
-      {bool enableBackgroundIsolate = false, this.socketConnector})
+      {this.socketConnector, Runner runner})
       : _jsonRpc = JsonRPC(url, httpClient) {
-    _operations = _ExpensiveOperations(enableBackgroundIsolate);
+    _operations = _ExpensiveOperations(runner ?? Runner());
     _filters = _FilterEngine(this);
   }
 
@@ -60,6 +62,7 @@ class Web3Client {
       if (data is Error || data is Exception) throw data;
 
       return data.result as T;
+      // ignore: avoid_catches_without_on_clauses
     } catch (e) {
       if (printErrors) print(e);
 
@@ -68,8 +71,9 @@ class Web3Client {
   }
 
   rpc.Peer _connectWithPeer() {
-    if (_streamRpcPeer != null && !_streamRpcPeer.isClosed)
+    if (_streamRpcPeer != null && !_streamRpcPeer.isClosed) {
       return _streamRpcPeer;
+    }
     if (socketConnector == null) return null;
 
     final socket = socketConnector();
@@ -236,7 +240,7 @@ class Web3Client {
   Future<TransactionReceipt> getTransactionReceipt(String hash) {
     return _makeRPCCall<Map<String, dynamic>>(
             'eth_getTransactionReceipt', [hash])
-        .then((s) => s != null ? TransactionReceipt.fromJson(s) : null);
+        .then((s) => s != null ? TransactionReceipt.fromMap(s) : null);
   }
 
   /// Gets the code of a contract at the specified [address]
@@ -246,6 +250,19 @@ class Web3Client {
   Future<Uint8List> getCode(EthereumAddress address, {BlockNum atBlock}) {
     return _makeRPCCall<String>(
         'eth_getCode', [address.hex, _getBlockParam(atBlock)]).then(hexToBytes);
+  }
+
+  /// Returns all logs matched by the filter in [options].
+  ///
+  /// See also:
+  ///  - [events], which can be used to obtain a stream of log events
+  ///  - https://github.com/ethereum/wiki/wiki/JSON-RPC#eth_getlogs
+  Future<List<FilterEvent>> getLogs(FilterOptions options) {
+    final filter = _EventFilter(options);
+    return _makeRPCCall<List<dynamic>>(
+        'eth_getLogs', [filter._createParamsObject(true)]).then((logs) {
+      return logs?.map(filter.parseChanges)?.toList();
+    });
   }
 
   /// Signs the given transaction using the keys supplied in the [cred]
@@ -305,6 +322,7 @@ class Web3Client {
       sender: sender,
       contract: contract.address,
       data: function.encodeCall(params),
+      atBlock: atBlock,
     );
 
     return function.decodeReturnValues(encodedResult);
@@ -330,8 +348,8 @@ class Web3Client {
           if (to != null) 'to': to.hex,
           if (amountOfGas != null) 'gas': '0x${amountOfGas.toRadixString(16)}',
           if (gasPrice != null)
-            'gasPrice': '0x${amountOfGas.toRadixString(16)}',
-          if (data != null) 'data': bytesToHex(data),
+            'gasPrice': '0x${gasPrice.getInWei.toRadixString(16)}',
+          if (data != null) 'data': bytesToHex(data, include0x: true),
         },
       ],
     );

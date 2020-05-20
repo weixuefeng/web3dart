@@ -11,10 +11,16 @@ class FixedBytes extends AbiType<Uint8List> {
   // the encoding length does not depend on this.length, as it will always be
   // padded to 32 bytes
   @override
-  final EncodingLengthInfo encodingLength =
+  EncodingLengthInfo get encodingLength =>
       const EncodingLengthInfo(sizeUnitBytes);
 
   const FixedBytes(this.length) : assert(0 <= length && length <= 32);
+
+  void _validate() {
+    if (length < 0 || length > 32) {
+      throw Exception('Invalid length for bytes: was $length');
+    }
+  }
 
   @override
   void encode(Uint8List data, LengthTrackingByteSink buffer) {
@@ -59,10 +65,10 @@ class FunctionType extends FixedBytes {
 /// The solidity bytes type, which decodes byte arrays of arbitrary length.
 class DynamicBytes extends AbiType<Uint8List> {
   @override
-  final String name = 'bytes';
+  String get name => 'bytes';
 
   @override
-  final EncodingLengthInfo encodingLength = const EncodingLengthInfo.dynamic();
+  EncodingLengthInfo get encodingLength => const EncodingLengthInfo.dynamic();
 
   const DynamicBytes();
 
@@ -100,9 +106,9 @@ class DynamicBytes extends AbiType<Uint8List> {
 /// The solidity string type, which utf-8 encodes strings
 class StringType extends AbiType<String> {
   @override
-  final String name = 'string';
+  String get name => 'string';
   @override
-  final EncodingLengthInfo encodingLength = const EncodingLengthInfo.dynamic();
+  EncodingLengthInfo get encodingLength => const EncodingLengthInfo.dynamic();
 
   const StringType();
 
@@ -137,8 +143,9 @@ class FixedLengthArray<T> extends AbiType<List<T>> {
 
   @override
   EncodingLengthInfo get encodingLength {
-    if (type.encodingLength.isDynamic)
+    if (type.encodingLength.isDynamic) {
       return const EncodingLengthInfo.dynamic();
+    }
     return EncodingLengthInfo(type.encodingLength.length * length);
   }
 
@@ -149,7 +156,7 @@ class FixedLengthArray<T> extends AbiType<List<T>> {
     assert(data.length == length);
 
     if (encodingLength.isDynamic) {
-      final lengthEncoder = const UintType();
+      const lengthEncoder = UintType._defaultInstance;
 
       final startPosition = buffer.length;
       var currentOffset = data.length * sizeUnitBytes;
@@ -167,7 +174,7 @@ class FixedLengthArray<T> extends AbiType<List<T>> {
         currentOffset += buffer.length - lengthBefore;
       }
     } else {
-      for (var elem in data) {
+      for (final elem in data) {
         type.encode(elem, buffer);
       }
     }
@@ -220,7 +227,7 @@ class DynamicLengthArray<T> extends AbiType<List<T>> {
   final AbiType<T> type;
 
   @override
-  final EncodingLengthInfo encodingLength = const EncodingLengthInfo.dynamic();
+  EncodingLengthInfo get encodingLength => const EncodingLengthInfo.dynamic();
   @override
   String get name => '${type.name}[]';
 
@@ -249,7 +256,7 @@ class DynamicLengthArray<T> extends AbiType<List<T>> {
   int get hashCode => 31 * type.hashCode;
 
   @override
-  bool operator ==(other) {
+  bool operator ==(dynamic other) {
     return identical(this, other) ||
         (other is DynamicLengthArray && other.type == type);
   }

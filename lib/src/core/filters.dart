@@ -26,7 +26,7 @@ class _NewBlockFilter extends _Filter<String> {
   }
 
   @override
-  String parseChanges(log) {
+  String parseChanges(dynamic log) {
     return log as String;
   }
 
@@ -163,6 +163,26 @@ class FilterEvent {
       this.data,
       this.topics});
 
+  FilterEvent.fromMap(Map<String, dynamic> log)
+      : removed = log['removed'] as bool ?? false,
+        logIndex = log['logIndex'] != null
+            ? hexToInt(log['logIndex'] as String).toInt()
+            : null,
+        transactionIndex = log['transactionIndex'] != null
+            ? hexToInt(log['transactionIndex'] as String).toInt()
+            : null,
+        transactionHash = log['transactionHash'] != null
+            ? log['transactionHash'] as String
+            : null,
+        blockHash =
+            log['blockHash'] != null ? log['blockHash'] as String : null,
+        blockNum = log['blockNumber'] != null
+            ? hexToInt(log['blockNumber'] as String).toInt()
+            : null,
+        address = EthereumAddress.fromHex(log['address'] as String),
+        data = log['data'] as String,
+        topics = (log['topics'] as List).cast<String>();
+
   @override
   String toString() {
     return 'FilterEvent('
@@ -177,6 +197,33 @@ class FilterEvent {
         'topics=$topics'
         ')';
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is FilterEvent &&
+          runtimeType == other.runtimeType &&
+          removed == other.removed &&
+          logIndex == other.logIndex &&
+          transactionIndex == other.transactionIndex &&
+          transactionHash == other.transactionHash &&
+          blockHash == other.blockHash &&
+          blockNum == other.blockNum &&
+          address == other.address &&
+          data == other.data &&
+          const ListEquality().equals(topics, other.topics);
+
+  @override
+  int get hashCode =>
+      removed.hashCode ^
+      logIndex.hashCode ^
+      transactionIndex.hashCode ^
+      transactionHash.hashCode ^
+      blockHash.hashCode ^
+      blockNum.hashCode ^
+      address.hashCode ^
+      data.hashCode ^
+      topics.hashCode;
 }
 
 class _EventFilter extends _Filter<FilterEvent> {
@@ -217,17 +264,7 @@ class _EventFilter extends _Filter<FilterEvent> {
 
   @override
   FilterEvent parseChanges(log) {
-    return FilterEvent(
-      removed: log['removed'] as bool ?? false,
-      logIndex: hexToInt(log['logIndex'] as String).toInt(),
-      transactionIndex: hexToInt(log['logIndex'] as String).toInt(),
-      transactionHash: log['transactionHash'] as String,
-      blockHash: log['blockHash'] as String,
-      blockNum: hexToInt(log['blockNumber'] as String).toInt(),
-      address: EthereumAddress.fromHex(log['address'] as String),
-      data: log['data'] as String,
-      topics: (log['topics'] as List).cast<String>(),
-    );
+    return FilterEvent.fromMap(log as Map<String, dynamic>);
   }
 }
 
@@ -268,7 +305,7 @@ class _FilterEngine {
     return instantiated._controller.stream;
   }
 
-  void _registerToAPI(_InstantiatedFilter filter) async {
+  Future<void> _registerToAPI(_InstantiatedFilter filter) async {
     final request = filter.filter.create();
 
     try {
@@ -281,7 +318,7 @@ class _FilterEngine {
     }
   }
 
-  void _registerToPubSub(
+  Future<void> _registerToPubSub(
       _InstantiatedFilter filter, _PubSubCreationParams params) async {
     final peer = _client._connectWithPeer();
 
@@ -299,18 +336,18 @@ class _FilterEngine {
     _ticker ??= Timer.periodic(_pingDuration, (_) => _refreshFilters());
   }
 
-  void _refreshFilters() async {
+  Future<void> _refreshFilters() async {
     if (_isRefreshing) return;
     _isRefreshing = true;
 
     try {
       final filterSnapshot = List.of(_filters);
 
-      for (var filter in filterSnapshot) {
+      for (final filter in filterSnapshot) {
         final updatedData =
             await _rpc.call('eth_getFilterChanges', [filter.id]);
 
-        for (var payload in updatedData.result) {
+        for (final payload in updatedData.result) {
           if (!filter._controller.isClosed) {
             _parseAndAdd(filter, payload);
           }
@@ -335,9 +372,7 @@ class _FilterEngine {
       _clearingBecauseSocketClosed = true;
       final pubSubFilters = _filters.where((f) => f.isPubSub).toList();
 
-      for (var filter in pubSubFilters) {
-        uninstall(filter);
-      }
+      pubSubFilters.forEach(uninstall);
     } finally {
       _clearingBecauseSocketClosed = false;
     }

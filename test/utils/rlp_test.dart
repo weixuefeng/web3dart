@@ -1,16 +1,14 @@
 import 'dart:convert';
-import 'dart:io';
-
-import 'package:path/path.dart';
 import 'package:web3dart/crypto.dart';
 import 'package:web3dart/src/utils/rlp.dart';
 import 'package:test/test.dart';
 
-void main() {
-  final file = File(join('test', 'utils', 'rlp_test_vectors.json'));
-  final testContent = json.decode(file.readAsStringSync()) as Map;
+import 'rlp_test_vectors.dart' as data;
 
-  for (var key in testContent.keys) {
+void main() {
+  final testContent = json.decode(data.content) as Map;
+
+  for (final key in testContent.keys) {
     test('$key', () {
       final data = testContent[key];
       final input = _mapTestData(data['in']);
